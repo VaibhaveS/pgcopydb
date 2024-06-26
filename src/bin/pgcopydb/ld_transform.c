@@ -1372,50 +1372,147 @@ coalesceLogicalTransactionStatement(LogicalTransaction *txn,
 {
 	LogicalTransactionStatement *last = txn->last;
 
-	LogicalMessageValuesArray *lastValuesArray =
-		&(last->stmt.insert.new.array->values);
-
-	LogicalMessageValuesArray *newValuesArray =
-		&(new->stmt.insert.new.array->values);
-
-	int capacity = lastValuesArray->capacity;
-	LogicalMessageValues *array = lastValuesArray->array;
-
-	/*
-	 * Check if the current LogicalMessageValues array has enough space to hold
-	 * the values from the new statement. If not, resize the lastValuesArray
-	 * using realloc.
-	 */
-	if (capacity < (lastValuesArray->count + 1))
+	if (last->action == STREAM_ACTION_INSERT)
 	{
-		/*
-		 * Additionally, we allocate more space than currently needed to avoid
-		 * repeated reallocation on every new value append. This trade-off
-		 * increases memory usage slightly but reduces the reallocation overhead
-		 * and potential heap memory fragmentation.
-		 */
-		capacity *= 2;
-		array = (LogicalMessageValues *)
-				realloc(array, sizeof(LogicalMessageValues) * capacity);
+		LogicalMessageValuesArray *lastValuesArray =
+			&(last->stmt.insert.new.array->values);
 
-		if (array == NULL)
+		LogicalMessageValuesArray *newValuesArray =
+			&(new->stmt.insert.new.array->values);
+
+		int capacity = lastValuesArray->capacity;
+		LogicalMessageValues *array = lastValuesArray->array;
+
+		/*
+		* Check if the current LogicalMessageValues array has enough space to hold
+		* the values from the new statement. If not, resize the lastValuesArray
+		* using realloc.
+		*/
+		if (capacity < (lastValuesArray->count + 1))
 		{
-			log_error(ALLOCATION_FAILED_ERROR);
-			return false;
+			/*
+			* Additionally, we allocate more space than currently needed to avoid
+			* repeated reallocation on every new value append. This trade-off
+			* increases memory usage slightly but reduces the reallocation overhead
+			* and potential heap memory fragmentation.
+			*/
+			capacity *= 2;
+			array = (LogicalMessageValues *)
+					realloc(array, sizeof(LogicalMessageValues) * capacity);
+
+			if (array == NULL)
+			{
+				log_error(ALLOCATION_FAILED_ERROR);
+				return false;
+			}
+
+			lastValuesArray->array = array;
+			lastValuesArray->capacity = capacity;
 		}
 
-		lastValuesArray->array = array;
-		lastValuesArray->capacity = capacity;
+		/*
+		* Move the new value from the 'newValuesArray' to the 'lastValuesArray' of
+		* the existing statement. Additionally, set the count of the 'newValuesArray'
+		* to 0 to prevent it from being deallocated by FreeLogicalMessageTupleArray,
+		* as it has been moved to the 'lastValuesArray'.
+		*/
+		lastValuesArray->array[lastValuesArray->count++] = newValuesArray->array[0];
+		newValuesArray->count = 0;
 	}
 
-	/*
-	 * Move the new value from the 'newValuesArray' to the 'lastValuesArray' of
-	 * the existing statement. Additionally, set the count of the 'newValuesArray'
-	 * to 0 to prevent it from being deallocated by FreeLogicalMessageTupleArray,
-	 * as it has been moved to the 'lastValuesArray'.
-	 */
-	lastValuesArray->array[lastValuesArray->count++] = newValuesArray->array[0];
-	newValuesArray->count = 0;
+	if (last->action == STREAM_ACTION_UPDATE)
+	{
+		LogicalMessageValuesArray *lastValuesArray =
+			&(last->stmt.update.new.array->values);
+
+		LogicalMessageValuesArray *newValuesArray =
+			&(new->stmt.update.new.array->values);
+
+		int capacity = lastValuesArray->capacity;
+		LogicalMessageValues *array = lastValuesArray->array;
+
+		/*
+		* Check if the current LogicalMessageValues array has enough space to hold
+		* the values from the new statement. If not, resize the lastValuesArray
+		* using realloc.
+		*/
+		if (capacity < (lastValuesArray->count + 1))
+		{
+			/*
+			* Additionally, we allocate more space than currently needed to avoid
+			* repeated reallocation on every new value append. This trade-off
+			* increases memory usage slightly but reduces the reallocation overhead
+			* and potential heap memory fragmentation.
+			*/
+			capacity *= 2;
+			array = (LogicalMessageValues *)
+					realloc(array, sizeof(LogicalMessageValues) * capacity);
+
+			if (array == NULL)
+			{
+				log_error(ALLOCATION_FAILED_ERROR);
+				return false;
+			}
+
+			lastValuesArray->array = array;
+			lastValuesArray->capacity = capacity;
+		}
+
+		/*
+		* Move the new value from the 'newValuesArray' to the 'lastValuesArray' of
+		* the existing statement. Additionally, set the count of the 'newValuesArray'
+		* to 0 to prevent it from being deallocated by FreeLogicalMessageTupleArray,
+		* as it has been moved to the 'lastValuesArray'.
+		*/
+		lastValuesArray->array[lastValuesArray->count++] = newValuesArray->array[0];
+		newValuesArray->count = 0;
+
+		LogicalMessageValuesArray *lastIdentityValuesArray =
+			&(last->stmt.update.old.array->values);
+
+		LogicalMessageValuesArray *newIdentityValuesArray =
+			&(new->stmt.update.old.array->values);
+
+		capacity = lastIdentityValuesArray->capacity;
+		array = lastIdentityValuesArray->array;
+
+		/*
+		* Check if the current LogicalMessageValues array has enough space to hold
+		* the values from the new statement. If not, resize the lastIdentityValuesArray
+		* using realloc.
+		*/
+		if (capacity < (lastIdentityValuesArray->count + 1))
+		{
+			/*
+			* Additionally, we allocate more space than currently needed to avoid
+			* repeated reallocation on every new value append. This trade-off
+			* increases memory usage slightly but reduces the reallocation overhead
+			* and potential heap memory fragmentation.
+			*/
+			capacity *= 2;
+			array = (LogicalMessageValues *)
+					realloc(array, sizeof(LogicalMessageValues) * capacity);
+
+			if (array == NULL)
+			{
+				log_error(ALLOCATION_FAILED_ERROR);
+				return false;
+			}
+
+			lastIdentityValuesArray->array = array;
+			lastIdentityValuesArray->capacity = capacity;
+		}
+
+		/*
+		* Move the new value from the 'newIdentityValuesArray' to the 'lastIdentityValuesArray' of
+		* the existing statement. Additionally, set the count of the 'newIdentityValuesArray'
+		* to 0 to prevent it from being deallocated by FreeLogicalMessageTupleArray,
+		* as it has been moved to the 'lastIdentityValuesArray'.
+		*/
+		lastIdentityValuesArray->array[lastIdentityValuesArray->count++] = newIdentityValuesArray->array[0];
+		newIdentityValuesArray->count = 0;
+
+	}
 
 	return true;
 }
@@ -1434,60 +1531,133 @@ canCoalesceLogicalTransactionStatement(LogicalTransaction *txn,
 {
 	LogicalTransactionStatement *last = txn->last;
 
-	/* TODO: Support UPDATE and DELETE */
-	if (last->action != STREAM_ACTION_INSERT ||
-		new->action != STREAM_ACTION_INSERT)
+	if (last->action != new->action) 
 	{
 		return false;
 	}
 
-	LogicalMessageInsert *lastInsert = &last->stmt.insert;
-	LogicalMessageInsert *newInsert = &new->stmt.insert;
-
-	/* Last and current statements must target same relation */
-	if (!streq(lastInsert->table.nspname, newInsert->table.nspname) ||
-		!streq(lastInsert->table.relname, newInsert->table.relname))
+	/* TODO: Support DELETE */
+	if (last->action == STREAM_ACTION_INSERT)
 	{
-		return false;
-	}
+		LogicalMessageInsert *lastInsert = &last->stmt.insert;
+		LogicalMessageInsert *newInsert = &new->stmt.insert;
 
-	LogicalMessageTuple *lastInsertColumns = lastInsert->new.array;
-	LogicalMessageTuple *newInsertColumns = newInsert->new.array;
-
-	/* Last and current statements must have same number of columns */
-	if (lastInsertColumns->cols != newInsertColumns->cols)
-	{
-		return false;
-	}
-
-	LogicalMessageValuesArray *lastValuesArray = &(lastInsert->new.array->values);
-
-	/*
-	 * Check if adding the new statement would exceed libpq's limit on the total
-	 * number of parameters allowed in a single PQsendPrepare call.
-	 * If it would exceed the limit, return false to indicate that coalescing
-	 * should not be performed.
-	 *
-	 * TODO: This parameter limit check is not applicable for COPY operations.
-	 * It should be removed once we switch to using COPY.
-	 */
-	if (((lastValuesArray->count + 1) * lastInsertColumns->cols) >
-		PQ_QUERY_PARAM_MAX_LIMIT)
-	{
-		return false;
-	}
-
-
-	/* Last and current statements cols must have same name and order */
-	for (int i = 0; i < lastInsertColumns->cols; i++)
-	{
-		if (!streq(lastInsertColumns->columns[i], newInsertColumns->columns[i]))
+		/* Last and current statements must target same relation */
+		if (!streq(lastInsert->table.nspname, newInsert->table.nspname) ||
+			!streq(lastInsert->table.relname, newInsert->table.relname))
 		{
 			return false;
 		}
+
+		LogicalMessageTuple *lastInsertColumns = lastInsert->new.array;
+		LogicalMessageTuple *newInsertColumns = newInsert->new.array;
+
+		/* Last and current statements must have same number of columns */
+		if (lastInsertColumns->cols != newInsertColumns->cols)
+		{
+			return false;
+		}
+
+		LogicalMessageValuesArray *lastValuesArray = &(lastInsert->new.array->values);
+
+		/*
+		* Check if adding the new statement would exceed libpq's limit on the total
+		* number of parameters allowed in a single PQsendPrepare call.
+		* If it would exceed the limit, return false to indicate that coalescing
+		* should not be performed.
+		*
+		* TODO: This parameter limit check is not applicable for COPY operations.
+		* It should be removed once we switch to using COPY.
+		*/
+		if (((lastValuesArray->count + 1) * lastInsertColumns->cols) >
+			PQ_QUERY_PARAM_MAX_LIMIT)
+		{
+			return false;
+		}
+
+
+		/* Last and current statements cols must have same name and order */
+		for (int i = 0; i < lastInsertColumns->cols; i++)
+		{
+			if (!streq(lastInsertColumns->columns[i], newInsertColumns->columns[i]))
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 
-	return true;
+	if (last->action == STREAM_ACTION_UPDATE)
+	{
+		LogicalMessageUpdate *lastUpdate = &last->stmt.update;
+		LogicalMessageUpdate *newUpdate = &new->stmt.update;
+
+		/* Last and current statements must target same relation */
+		if (!streq(lastUpdate->table.nspname, newUpdate->table.nspname) ||
+			!streq(lastUpdate->table.relname, newUpdate->table.relname))
+		{
+			return false;
+		}
+
+		LogicalMessageTuple *lastUpdateColumns = lastUpdate->new.array;
+		LogicalMessageTuple *newUpdateColumns = newUpdate->new.array;
+
+		/* Last and current statements must have same number of columns */
+		if (lastUpdateColumns->cols != newUpdateColumns->cols)
+		{
+			return false;
+		}
+
+		/* Last and current statements cols must have same name and order */
+		for (int i = 0; i < lastUpdateColumns->cols; i++)
+		{
+			if (!streq(lastUpdateColumns->columns[i], newUpdateColumns->columns[i]))
+			{
+				return false;
+			}
+		}
+
+		LogicalMessageTuple *lastUpdateIdentity = lastUpdate->old.array;
+		LogicalMessageTuple *newUpdateIdentity = newUpdate->old.array;
+
+		/* Last and current statements must have same number of columns */
+		if (lastUpdateIdentity->cols != newUpdateIdentity->cols)
+		{
+			return false;
+		}
+
+		/* Last and current statements cols must have same name and order */
+		for (int i = 0; i < lastUpdateIdentity->cols; i++)
+		{
+			if (!streq(lastUpdateIdentity->columns[i], newUpdateIdentity->columns[i]))
+			{
+				return false;
+			}
+		}
+		
+		//todo
+		LogicalMessageValuesArray *lastValuesArray = &(lastUpdate->new.array->values);
+
+		/*
+		* Check if adding the new statement would exceed libpq's limit on the total
+		* number of parameters allowed in a single PQsendPrepare call.
+		* If it would exceed the limit, return false to indicate that coalescing
+		* should not be performed.
+		*
+		* TODO: This parameter limit check is not applicable for COPY operations.
+		* It should be removed once we switch to using COPY.
+		*/
+		if (((lastValuesArray->count + 1) * lastUpdateColumns->cols) >
+			PQ_QUERY_PARAM_MAX_LIMIT)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 
@@ -1534,6 +1704,8 @@ streamLogicalTransactionAppendStatement(LogicalTransaction *txn,
 	{
 		if (canCoalesceLogicalTransactionStatement(txn, stmt))
 		{
+			log_error("yep can coalese");
+
 			if (!coalesceLogicalTransactionStatement(txn, stmt))
 			{
 				/* errors have already been logged */
@@ -1542,6 +1714,8 @@ streamLogicalTransactionAppendStatement(LogicalTransaction *txn,
 		}
 		else
 		{
+			log_error("yep cant coalese :(");
+
 			/* update the current last entry of the linked-list */
 			txn->last->next = stmt;
 
@@ -2135,9 +2309,7 @@ stream_write_update(FILE *out, LogicalMessageUpdate *update)
 		LogicalMessageTuple *old = &(update->old.array[s]);
 		LogicalMessageTuple *new = &(update->new.array[s]);
 
-		if (old->values.count != new->values.count ||
-			old->values.count != 1 ||
-			new->values.count != 1)
+		if (old->values.count != new->values.count)
 		{
 			log_error("Failed to write multi-values UPDATE statement "
 					  "with %d old rows and %d new rows",
@@ -2154,9 +2326,53 @@ stream_write_update(FILE *out, LogicalMessageUpdate *update)
 		/*
 		 * First, the PREPARE part.
 		 */
-		appendPQExpBuffer(buf, "UPDATE %s.%s SET ",
+		appendPQExpBuffer(buf, "UPDATE %s.%s as t SET ",
 						  update->table.nspname,
 						  update->table.relname);
+		
+		bool first = true;
+
+		/*
+		* Construct the SET part of the UPDATE statement.
+		* Example - SET id = data.id, name = data.name
+		*/
+		for(int c = 0; c < new->cols; c++)
+		{
+			/*
+			* Avoid SET "id" = 1 WHERE "id" = 1 ; so for that we lookup
+			* for a column with the same name in the old parts, and with
+			* the same value too.
+			*/
+			bool skip = true;
+
+			for(int r = 0; r < new->values.count; r++) 
+			{
+				/*
+				* If there is a single row where old[c] != new[c], then we can't skip this column
+				*/
+				if (!LogicalMessageValueEq(&(new->values.array[r].array[c]), &(old->values.array[r].array[c])))
+				{
+					skip = false;
+					break;
+				}
+
+				if (!skip)
+				{
+					appendPQExpBuffer(buf, "%s%s = data.%s",
+									  first ? "" : ", ",
+									  colname,
+									  colname);
+
+					if (first)
+					{
+						first = false;
+					}
+				}
+			}
+		}
+		
+		appendPQExpBuffer(buf, " FROM (VALUES ");
+
 		int pos = 0;
 
 		for (int r = 0; r < new->values.count; r++)
@@ -2181,29 +2397,6 @@ stream_write_update(FILE *out, LogicalMessageUpdate *update)
 					return false;
 				}
 
-				/*
-				 * Avoid SET "id" = 1 WHERE "id" = 1 ; so for that we lookup
-				 * for a column with the same name in the old parts, and with
-				 * the same value too.
-				 */
-				bool skip = false;
-
-				for (int oc = 0; oc < old->cols; oc++)
-				{
-					if (streq(old->columns[oc], colname))
-					{
-						/* only works because old->values.count == 1 */
-						LogicalMessageValue *oldValue =
-							&(old->values.array[0].array[oc]);
-
-						if (LogicalMessageValueEq(oldValue, value))
-						{
-							skip = true;
-							break;
-						}
-					}
-				}
-
 				if (!skip)
 				{
 					appendPQExpBuffer(buf, "%s%s = $%d",
@@ -2226,7 +2419,49 @@ stream_write_update(FILE *out, LogicalMessageUpdate *update)
 			}
 		}
 
-		appendPQExpBufferStr(buf, " WHERE ");
+		/*
+		* Construct the AS data part of the UPDATE statement.
+		* Example - AS data(id, name)
+		*/
+		appendPQExpBufferStr(buf, " AS DATA( ");
+
+		first = true;
+
+		for(int c = 0; c < new->cols; c++)
+		{
+			/*
+			* Avoid SET "id" = 1 WHERE "id" = 1 ; so for that we lookup
+			* for a column with the same name in the old parts, and with
+			* the same value too.
+			*/
+			bool skip = true;
+
+			for(int r = 0; r < new->values.count; r++) 
+			{
+				/*
+				* If there is a single row where old[c] != new[c], then we can't skip this column
+				*/
+				if (!LogicalMessageValueEq(&(new->values.array[r].array[c]), &(old->values.array[r].array[c])))
+				{
+					skip = false;
+					break;
+				}
+
+				if (!skip)
+				{
+					appendPQExpBuffer(buf, "%s%s",
+									  first ? "" : ", ",
+									  colname);
+
+					if (first)
+					{
+						first = false;
+					}
+				}
+			}
+		}
+
+		appendPQExpBufferStr(buf, ") WHERE ");
 
 		for (int r = 0; r < old->values.count; r++)
 		{
