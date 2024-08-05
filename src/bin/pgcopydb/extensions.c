@@ -513,16 +513,13 @@ timescaledb_pre_restore(CopyDataSpec *copySpecs)
 		exit(EXIT_CODE_INTERNAL_ERROR);
 	}
 
-	char *sql = "SELECT $1.timescaledb_pre_restore()";
+	char sql[BUFSIZE] = { 0 };
+	sformat(sql, sizeof(sql), "SELECT %s.timescaledb_pre_restore()",
+			extension->extnamespace);
 
-	int paramCount = 1;
-	Oid paramTypes[1] = { TEXTOID };
-	const char *paramValues[1] = { extension->extnamespace };
-
-	if (!pgsql_execute_with_params(&dst, sql, paramCount, paramTypes, paramValues, NULL,
-								   NULL))
+	if (!pgsql_execute(&dst, sql))
 	{
-		log_error("Failed to call timescaledb_pre_restore()");
+		log_error("Failed to call timescaledb_post_restore()");
 		return false;
 	}
 
@@ -567,14 +564,11 @@ timescaledb_post_restore(CopyDataSpec *copySpecs)
 		exit(EXIT_CODE_INTERNAL_ERROR);
 	}
 
-	char *sql = "SELECT $1.timescaledb_post_restore()";
+	char sql[BUFSIZE] = { 0 };
+	sformat(sql, sizeof(sql), "SELECT %s.timescaledb_post_restore()",
+			extension->extnamespace);
 
-	int paramCount = 1;
-	Oid paramTypes[1] = { TEXTOID };
-	const char *paramValues[1] = { extension->extnamespace };
-
-	if (!pgsql_execute_with_params(&dst, sql, paramCount, paramTypes, paramValues, NULL,
-								   NULL))
+	if (!pgsql_execute(&dst, sql))
 	{
 		log_error("Failed to call timescaledb_post_restore()");
 		return false;

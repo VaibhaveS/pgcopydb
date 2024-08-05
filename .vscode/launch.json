@@ -1,0 +1,228 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "(gdb) Launch with Core Dump",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/src/bin/pgcopydb/pgcopydb",
+			"coreDumpPath": "${input:coreFileName}",
+			"cwd": "${workspaceFolder}",
+			"MIMode": "gdb",
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Set Disassembly Flavor to Intel",
+					"text": "-gdb-set disassembly-flavor intel",
+					"ignoreFailures": true
+				}
+			]
+		},
+		{
+			"name": "(gdb) Attach",
+			"type": "cppdbg",
+			"request": "attach",
+			"program": "${workspaceFolder}/src/bin/pgcopydb/pgcopydb",
+			"MIMode": "gdb",
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Set Disassembly Flavor to Intel",
+					"text": "-gdb-set disassembly-flavor intel",
+					"ignoreFailures": true
+				}
+			]
+		},
+		{
+			"name": "(gdb) Launch",
+			"type": "cppdbg",
+			"envFile": "${workspaceFolder}/.vscode/.env",
+			"request": "launch",
+			"program": "${workspaceFolder}/src/bin/pgcopydb/pgcopydb",
+			"stopAtEntry": true,
+			"cwd": "${fileDirname}",
+			"externalConsole": false,
+			"MIMode": "gdb",
+			/**** online ****/
+			// "args": [
+			// 	"clone",
+			// 	"--follow",
+			// 	"--dir",
+			// 	"${workspaceFolder}/Debug/vscode-debugging/${input:dateTime}",
+			// 	"--plugin",
+			// 	"wal2json",
+			// 	"--no-owner",
+			// 	"--no-acl",
+			// 	"--drop-if-exists",
+			// 	"--trace",
+			// 	"--verbose",
+            //     ">",
+            //     "${workspaceFolder}/Debug/vscode-debugging/logs/${input:dateTime}.txt",
+            //     "2>&1"
+			// ],
+			/**** transform ****/
+			// "args": [
+			// 	"stream",
+			// 	"transform",
+			// 	"--resume",
+			// 	"--dir",
+			// 	"${input:PDIR}",
+			// 	"--plugin",
+			// 	"wal2json",
+			// 	"--trace",
+			// 	"--verbose",
+			// 	"${input:PJSON}",
+			// 	"${input:PSQL}"
+			// ],
+			/**** offline ****/
+			"args": [
+			    "clone",
+			    "--no-owner",
+			    "--no-acl",
+			    "--drop-if-exists",
+			    "--dir",
+			    "${workspaceFolder}/Debug/vscode-debugging/${input:dateTime}",
+			    "--index-jobs",
+			    "1",
+			    "--table-jobs",
+			    "1",
+			    "--large-objects-jobs",
+			    "1",
+			    "--trace",
+			    "--verbose",
+                ">",
+                "${workspaceFolder}/Debug/vscode-debugging/logs/${input:dateTime}.txt",
+                "2>&1"
+			],
+			/**** list table-parts ****/
+			// "args": [
+			//     "list",
+			//     "progress",
+			//     "--json",
+			//     "--dir",
+			// 	"${input:PDIR}"
+			// ],
+			/**** list table-parts ****/
+			// "args": [
+			//     "list",
+			//     "table-parts",
+			//     "--table-name",
+			//     "nopk_t_character_types",
+			// 	"--split-tables-larger-than", "10 MB",
+			//     "--trace",
+			//     "--verbose"
+			// ],
+			/**** blobs ****/
+			// "args": [
+			// 	"copy",
+			// 	"blobs",
+			// 	"--dir",
+			// 	"${workspaceFolder}/tempwd",
+			// 	"--verbose",
+			// 	"--trace",
+			// 	"--restart"
+			// ],
+			/**** parse list ****/
+			// "args": [
+			// 	"restore",
+			// 	"parse-list",
+			// 	"/home/shubham/pg/pgcopydb/Debug/pre.2.list"
+			// ],
+			/**** set endpos ****/
+			// "args": [
+			// 	"stream",
+			// 	"sentinel",
+			// 	"set",
+			// 	"endpos",
+			// 	"--current",
+			// 	"--dir",
+			// 	"${input:PDIR}"
+			// ],
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Set Disassembly Flavor to Intel",
+					"text": "-gdb-set disassembly-flavor intel",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Enable break forks",
+					"text": "catch fork",
+					"ignoreFailures": true
+				}
+			]
+		}
+	],
+	"inputs": [
+		{
+			"id": "coreFileName",
+			"type": "promptString",
+			"description": "Enter core file path"
+		},
+		{
+			"id": "workingDir",
+			"type": "promptString",
+			"description": "Enter pgcopydb working directory"
+		},
+		{
+			"id": "dateTime",
+			"type": "command",
+			"command": "extension.commandvariable.dateTime",
+			"args": {
+				"options": {
+					"year": "numeric",
+					"month": "2-digit",
+					"day": "2-digit",
+					"hour12": false,
+					"hour": "2-digit",
+					"minute": "2-digit",
+					"second": "2-digit"
+				},
+				"template": "${year}-${month}-${day}-T${hour}-${minute}-${second}"
+			}
+		},
+		{
+			"id": "PDIR",
+			"type": "command",
+			"command": "extension.commandvariable.file.content",
+			"args": {
+				"fileName": "${workspaceFolder}/.vscode/launch.config.yml",
+				"yaml": "content.pdir",
+				"debug": true
+			},
+		},
+		{
+			"id": "PJSON",
+			"type": "command",
+			"command": "extension.commandvariable.file.content",
+			"args": {
+				"fileName": "${workspaceFolder}/.vscode/launch.config.yml",
+				"yaml": "content.pjson",
+			}
+		},
+		{
+			"id": "PSQL",
+			"type": "command",
+			"command": "extension.commandvariable.file.content",
+			"args": {
+				"fileName": "${workspaceFolder}/.vscode/launch.config.yml",
+				"yaml": "content.psql",
+			}
+		},
+	]
+}
