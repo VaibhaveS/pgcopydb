@@ -407,3 +407,172 @@ copydb_parse_extensions_requirements(CopyDataSpec *copySpecs, char *filename)
 
 	return true;
 }
+
+
+/*
+ * copydb_prepare_extensions_restore implements pre pg_restore steps that might
+ * be needed for some extensions.
+ *
+ * At the moment we need to call timescaledb_pre_restore() when timescaledb has
+ * been used.
+ */
+bool
+copydb_prepare_extensions_restore(CopyDataSpec *copySpecs)
+{
+	bool hasTimescaledb = false;
+	DatabaseCatalog *filterDB = &(copySpecs->catalogs.filter);
+	const char *extensionName = "timescaledb";
+
+	if (!catalog_extension_exists(filterDB, extensionName, &hasTimescaledb))
+	{
+		/* errors have already been logged*/
+		return false;
+	}
+
+	if (hasTimescaledb)
+	{
+		log_debug("Timescaledb extension is present");
+		if (!timescaledb_pre_restore(copySpecs))
+		{
+			/* errors have already been logged */
+			return false;
+		}
+	}
+	return true;
+}
+
+
+/*
+ * copydb_prepare_extensions_restore implements pre pg_restore steps that might
+ * be needed for some extensions.
+ *
+ * At the moment we need to call timescaledb_pre_restore() when timescaledb has
+ * been used.
+ */
+bool
+copydb_finalize_extensions_restore(CopyDataSpec *copySpecs)
+{
+	bool hasTimescaledb = false;
+	DatabaseCatalog *filterDB = &(copySpecs->catalogs.filter);
+	const char *extensionName = "timescaledb";
+
+	if (!catalog_extension_exists(filterDB, extensionName, &hasTimescaledb))
+	{
+		/* errors have already been logged*/
+		return false;
+	}
+
+	if (hasTimescaledb)
+	{
+		log_debug("Timescaledb extension is present");
+		if (!timescaledb_post_restore(copySpecs))
+		{
+			/* errors have already been logged */
+			return false;
+		}
+	}
+
+	return true;
+}
+
+
+/*
+ * Call the timescaledb_pre_restore() SQL function on the target database.
+ */
+bool
+timescaledb_pre_restore(CopyDataSpec *copySpecs)
+{
+	PGSQL dst = { 0 };
+
+	if (!pgsql_init(&dst, copySpecs->connStrings.target_pguri, PGSQL_CONN_TARGET))
+	{
+		/* errors have already been logged */
+		return false;
+	}
+
+	SourceExtension *extension = (SourceExtension *) calloc(1, sizeof(SourceExtension));
+
+	if (extension == NULL)
+	{
+		log_error(ALLOCATION_FAILED_ERROR);
+		exit(EXIT_CODE_INTERNAL_ERROR);
+	}
+
+	DatabaseCatalog *filterDB = &(copySpecs->catalogs.filter);
+
+	const char *extensionName = "timescaledb";
+
+	if (!catalog_lookup_s_extension_by_extname(filterDB,
+											   extensionName,
+											   extension))
+	{
+		log_error("Failed to lookup for extension \"%s\" in our "
+				  "internal catalogs",
+				  extensionName);
+
+		exit(EXIT_CODE_INTERNAL_ERROR);
+	}
+
+	char sql[BUFSIZE] = { 0 };
+	sformat(sql, sizeof(sql), "SELECT %s.timescaledb_pre_restore()",
+			extension->extnamespace);
+
+	if (!pgsql_execute(&dst, sql))
+	{
+		log_error("Failed to call timescaledb_post_restore()");
+		return false;
+	}
+
+	return true;
+}
+
+
+/*
+ * Call the timescaledb_post_restore() SQL function on the target database.
+ */
+bool
+timescaledb_post_restore(CopyDataSpec *copySpecs)
+{
+	PGSQL dst = { 0 };
+
+	if (!pgsql_init(&dst, copySpecs->connStrings.target_pguri, PGSQL_CONN_TARGET))
+	{
+		/* errors have already been logged */
+		return false;
+	}
+
+	SourceExtension *extension = (SourceExtension *) calloc(1, sizeof(SourceExtension));
+
+	if (extension == NULL)
+	{
+		log_error(ALLOCATION_FAILED_ERROR);
+		exit(EXIT_CODE_INTERNAL_ERROR);
+	}
+
+	DatabaseCatalog *filterDB = &(copySpecs->catalogs.filter);
+
+	const char *extensionName = "timescaledb";
+
+	if (!catalog_lookup_s_extension_by_extname(filterDB,
+											   extensionName,
+											   extension))
+	{
+		log_error("Failed to lookup for extension \"%s\" in our "
+				  "internal catalogs",
+				  extensionName);
+
+		exit(EXIT_CODE_INTERNAL_ERROR);
+	}
+
+	char sql[BUFSIZE] = { 0 };
+	sformat(sql, sizeof(sql), "SELECT %s.timescaledb_post_restore()",
+			extension->extnamespace);
+
+	if (!pgsql_execute(&dst, sql))
+	{
+		log_error("Failed to call timescaledb_post_restore()");
+		return false;
+	}
+
+	return true;
+}
